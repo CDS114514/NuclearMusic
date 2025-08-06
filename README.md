@@ -5,7 +5,7 @@ Noteblock music for Nukkit servers
 - [x] Read NBS files from any version
 - [x] Full pitch range support
 - [x] Global playback
-- [x] Play through specific noteblocks
+- [x] Play music through noteblocks
 - [x] Loop playback
 - [x] Sequential playback
 - [x] Allow control by players with different permission levels
@@ -15,4 +15,4 @@ Noteblock music for Nukkit servers
 - [PetteriM1 NuclearMusic](https://github.com/PetteriM1/NuclearMusic)
 
 ## Additional Notes
-**This program contains code partially written by AI**
+**This plugin contains code partially written by AI**
