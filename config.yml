@@ -1,0 +1,8 @@
+# Whether to enable global music playback
+playEverywhere: true
+
+# Whether to allow non-OP players to control music boxes
+allowNonOpControl: false
+
+# Whether to enable single track loop mode
+singleCycle: false
