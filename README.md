@@ -2,7 +2,7 @@
 Noteblock music for Nukkit servers
 
 ## Features
-- Supports NBS files of any version (NBS file format versions)
+- Supports NBS files of any version
 - Full pitch range support
 - Custom instruments
 - Global playback
@@ -13,7 +13,7 @@ Noteblock music for Nukkit servers
 
 ## Supported Nukkit Branches
 - [x] CloudBurstMC Nukkit
-- [x] Nukkit-PM1E (Supports music playback, but console errors may occur, and playback speed may be affected)
+- [x] Nukkit-PM1E (Supports music playback, but console errors may occur, and playback speed (tempo) may be affected)
 - [ ] PowerNukkitX
 - [x] Nukkit-MOT
 - [x] Netease Nukkit
