@@ -10,19 +10,54 @@ import cn.nukkit.network.protocol.LevelSoundEventPacket;
 import com.xxmicloxx.NoteBlockAPI.*;
 import com.xxmicloxx.NoteBlockAPI.note.Layer;
 import com.xxmicloxx.NoteBlockAPI.note.Note;
+import com.xxmicloxx.NoteBlockAPI.nukkit.ClientTypeDetector;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-/**
- * Created with IntelliJ IDEA.
- * User: ml
- * Date: 07.12.13
- * Time: 12:56
- */
 public class NoteBlockSongPlayer extends SongPlayer {
     private Block[] noteBlock;
     public int distance = 24;
+
+    private static final Map<Class<?>, Field> EVENT_TYPE_CACHE = new HashMap<>();
+    private static final Map<Class<?>, Field> EVENT_DATA_CACHE = new HashMap<>();
+    
+    static {
+        cacheFields(BlockEventPacket.class);
+    }
+    
+    private static void cacheFields(Class<?> clazz) {
+        try {
+            Field eventType = clazz.getDeclaredField("eventType");
+            eventType.setAccessible(true);
+            EVENT_TYPE_CACHE.put(clazz, eventType);
+        } catch (NoSuchFieldException e1) {
+            try {
+                Field eventType = clazz.getDeclaredField("case1");
+                eventType.setAccessible(true);
+                EVENT_TYPE_CACHE.put(clazz, eventType);
+            } catch (NoSuchFieldException e2) {
+                System.err.println("NoteBlockAPI: eventType field not found in BlockEventPacket");
+            }
+        }
+
+        try {
+            Field eventData = clazz.getDeclaredField("eventData");
+            eventData.setAccessible(true);
+            EVENT_DATA_CACHE.put(clazz, eventData);
+        } catch (NoSuchFieldException e1) {
+            try {
+                Field eventData = clazz.getDeclaredField("case2");
+                eventData.setAccessible(true);
+                EVENT_DATA_CACHE.put(clazz, eventData);
+            } catch (NoSuchFieldException e2) {
+                System.err.println("NoteBlockAPI: eventData field not found in BlockEventPacket");
+            }
+        }
+    }
 
     public NoteBlockSongPlayer(Song song) {
         super(song);
@@ -40,21 +75,66 @@ public class NoteBlockSongPlayer extends SongPlayer {
         this.noteBlock = noteBlock;
     }
 
+    private void setFieldValue(Object obj, String[] fieldNames, Object value) {
+        Class<?> clazz = obj.getClass();
+        
+        if ("eventType".equals(fieldNames[0]) || "case1".equals(fieldNames[0])) {
+            Field field = EVENT_TYPE_CACHE.get(clazz);
+            if (field != null) {
+                try {
+                    field.set(obj, value);
+                    return;
+                } catch (IllegalAccessException e) {
+
+                }
+            }
+        } 
+        else if ("eventData".equals(fieldNames[0]) || "case2".equals(fieldNames[0])) {
+            Field field = EVENT_DATA_CACHE.get(clazz);
+            if (field != null) {
+                try {
+                    field.set(obj, value);
+                    return;
+                } catch (IllegalAccessException e) {
+                }
+            }
+        }
+        
+        for (String fieldName : fieldNames) {
+            try {
+                Field field = clazz.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(obj, value);
+                
+                if ("eventType".equals(fieldName) || "case1".equals(fieldName)) {
+                    EVENT_TYPE_CACHE.put(clazz, field);
+                } 
+                else if ("eventData".equals(fieldName) || "case2".equals(fieldName)) {
+                    EVENT_DATA_CACHE.put(clazz, field);
+                }
+                return;
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                continue;
+            }
+        }
+    }
+
     @Override
     public void playTick(Player p, int tick) {
         if (noteBlock.length == 0) {
             return;
         }
         if (!p.getLevel().getFolderName().equals(noteBlock[0].getLevel().getFolderName())) {
-            // not in same world
             return;
         }
-        boolean limit = p.protocol < 388;
+        
+        int clientType = ClientTypeDetector.getClientType(p);
+        boolean limit = clientType < 2;
         List<DataPacket> batchedPackets = new ArrayList<>();
-        //byte playerVolume = NoteBlockAPI.getInstance().getPlayerVolume(p);
         int distanceSquared = distance * distance;
+        
         for (Block noteBlock: this.noteBlock.clone()) {
-            if (p.distanceSquared(noteBlock) < distanceSquared) {  //48
+            if (p.distanceSquared(noteBlock) < distanceSquared) {
                 for (Layer l : song.getLayerHashMap().values()) {
                     Note note = l.getNote(tick);
                     if (note == null) {
@@ -67,12 +147,13 @@ public class NoteBlockSongPlayer extends SongPlayer {
                     pk.x = (int) noteBlock.x;
                     pk.y = (int) noteBlock.y;
                     pk.z = (int) noteBlock.z;
-                    pk.eventType = note.getInstrument(limit);
-                    pk.eventData = pitch;
+
+                    setFieldValue(pk, new String[]{"eventType", "case1"}, note.getInstrument(limit));
+                    setFieldValue(pk, new String[]{"eventData", "case2"}, pitch);
                     pk.tryEncode();
                     
-
                     float subtractY = (float)(100 - l.getVolume()) / 25F;
+                    
                     if (note.getInstrument(false) >= song.getFirstCustomInstrumentIndex()) {
                         PlaySoundPacket psk = new PlaySoundPacket();
                         psk.name = song.getCustomInstruments()[note.getInstrument(false) - song.getFirstCustomInstrumentIndex()].getName();
@@ -83,7 +164,7 @@ public class NoteBlockSongPlayer extends SongPlayer {
                         psk.volume = (float) l.getVolume() / 100;
                         psk.tryEncode();
                         batchedPackets.add(psk);
-                    } else if (p.protocol >= 312 && pitch < 0) {
+                    } else if (clientType >= 1 && pitch < 0) {
                         PlaySoundPacket psk = new PlaySoundPacket();
                         psk.name = note.getSoundEnum(limit).getSound();
                         psk.x = (int) noteBlock.x;
@@ -94,7 +175,7 @@ public class NoteBlockSongPlayer extends SongPlayer {
                         psk.tryEncode();
                         batchedPackets.add(psk);
                     } else {
-                        if (p.protocol > 748) {
+                        if (clientType > 3) {
                             int instrument = note.getInstrument(limit);
                             switch (instrument) {
                                 case 5: instrument = 6; break;
@@ -126,14 +207,12 @@ public class NoteBlockSongPlayer extends SongPlayer {
                     }
 
                     batchedPackets.add(pk);
-
                 }
             }
-            //p.getLevel().addSound(new MusicBlocksSound(noteBlock, note.getInstrument(), note.getKey()), new Player[]{p});
         }
+        
         for (DataPacket pk: batchedPackets) {
             p.dataPacket(pk);
         }
-        //Server.getInstance().batchPackets(new Player[]{p}, batchedPackets.stream().toArray(DataPacket[]::new), true);
     }
 }

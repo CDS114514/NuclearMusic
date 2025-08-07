@@ -235,6 +235,12 @@ public class NuclearMusicPlugin extends PluginBase {
             if (isControlItem && hasPermission) {
                 if (playEverywhere) {
                     if (isControlBlock) {
+                        if (songs.isEmpty()) {
+                            event.getPlayer().sendActionBar("§cError! No songs loaded!");
+                            event.setCancelled(true);
+                            return;
+                        }
+                        
                         Song now = radioPlayer.getSong();
                         radioPlayer.setPlaying(false);
                         Song next = nextSong(now);
@@ -247,6 +253,12 @@ public class NuclearMusicPlugin extends PluginBase {
                         event.getPlayer().sendActionBar("§aNow playing: §7" + next.getTitle());
                         event.setCancelled(true);
                     } else if (controlBlockPosition == null) {
+                        if (songs.isEmpty()) {
+                            event.getPlayer().sendActionBar("§cError! No songs loaded!");
+                            event.setCancelled(true);
+                            return;
+                        }
+                        
                         controlBlockPosition = node;
                         if (radioPlayer != null) {
                             radioPlayer.setPlaying(false);
@@ -290,7 +302,8 @@ public class NuclearMusicPlugin extends PluginBase {
                             event.getPlayer().sendActionBar("§aNow playing: §7" + song.getTitle());
                             event.setCancelled(true);
                         } catch (NoSuchElementException ignore) {
-                            event.getPlayer().sendMessage("§cError! No songs loaded!");
+                            event.getPlayer().sendActionBar("§cError! No songs loaded!");
+                            event.setCancelled(true);
                         }
                     }
                 }

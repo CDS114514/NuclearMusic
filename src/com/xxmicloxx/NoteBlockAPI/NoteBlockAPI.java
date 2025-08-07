@@ -5,25 +5,18 @@ import cn.nukkit.Server;
 import cn.nukkit.plugin.PluginBase;
 import com.xxmicloxx.NoteBlockAPI.player.SongPlayer;
 import com.xxmicloxx.NoteBlockAPI.runnable.TickerRunnable;
-import it.unimi.dsi.fastutil.objects.Object2ByteMap;
-import it.unimi.dsi.fastutil.objects.Object2ByteOpenHashMap;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-/**
- * Created by Snake1999 on 2016/1/19.
- * Package com.xxmicloxx.NoteBlockAPI in project NuclearMusic.
- */
-public class NoteBlockAPI extends PluginBase{
+public class NoteBlockAPI extends PluginBase {
 
     private static NoteBlockAPI instance;
     public Queue<SongPlayer> playing = new ConcurrentLinkedQueue<>();
     public Map<String, List<SongPlayer>> playingSongs = new ConcurrentHashMap<>();
-    public Object2ByteMap<String> playerVolume = new Object2ByteOpenHashMap<>();
+
+    public Map<String, Byte> playerVolume = new ConcurrentHashMap<>();
 
     public static NoteBlockAPI getInstance() {
         if (instance == null) instance = new NoteBlockAPI();

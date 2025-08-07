@@ -188,8 +188,6 @@ public abstract class SongPlayer {
         calculateFade();
         if (System.currentTimeMillis() - lastPlayed < 50 * getSong().getDelay() / this.speedUp) return;
         tick++;
-        //Server.getInstance().getLogger().notice("delay: " + getSong().getDelay());
-        //Server.getInstance().getLogger().notice(String.valueOf(tick));
         if (tick > song.getLength()) {
             playing = false;
             tick = -1;
@@ -198,12 +196,15 @@ public abstract class SongPlayer {
                 return;
             }
             if (autoCycle) playing = true;
-            Server.getInstance().getScheduler().scheduleTask(NoteBlockAPI.getInstance(), () -> new SongEndEvent(this).call());
+            Server.getInstance().getScheduler().scheduleTask(NoteBlockAPI.getInstance(), () -> {
+                SongEndEvent event = new SongEndEvent(this);
+                Server.getInstance().getPluginManager().callEvent(event);
+            });
             return;
         }
         for (Player p : playerList) {
             try {
-                if (!p.isConnected()) playerList.remove(p); //offline
+                if (!p.isConnected()) playerList.remove(p);
                 if (p.spawned) playTick(p, tick);
             } catch (Exception ignore) {
             }

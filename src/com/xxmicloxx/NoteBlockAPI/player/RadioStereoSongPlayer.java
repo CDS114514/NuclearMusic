@@ -17,6 +17,7 @@ import cn.nukkit.utils.Zlib;
 import com.xxmicloxx.NoteBlockAPI.Song;
 import com.xxmicloxx.NoteBlockAPI.note.Layer;
 import com.xxmicloxx.NoteBlockAPI.note.Note;
+import com.xxmicloxx.NoteBlockAPI.nukkit.ClientTypeDetector;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,8 @@ public class RadioStereoSongPlayer extends SongPlayer {
     public void playTick(Player p, int tick) {
         List<DataPacket> batchedPackets = new ArrayList<>();
         //byte playerVolume = NoteBlockAPI.getInstance().getPlayerVolume(p);
-        boolean limit = p.protocol < 388;
+        int clientType = ClientTypeDetector.getClientType(p);
+        boolean limit = clientType < 2;
 
         for (Layer l : song.getLayerHashMap().values()) {
             Note note = l.getNote(tick);
@@ -77,7 +79,7 @@ public class RadioStereoSongPlayer extends SongPlayer {
                 psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
                 psk.tryEncode();
                 batchedPackets.add(psk);
-            } else if ((p.protocol >= 312 && pitch < 0)) {
+            } else if ((clientType >= 1 && pitch < 0)) {
                 PlaySoundPacket psk = new PlaySoundPacket();
                 psk.name = note.getSoundEnum(true).getSound();
                 psk.x = (int) ((float) p.x + (float) add.getX());
@@ -88,7 +90,7 @@ public class RadioStereoSongPlayer extends SongPlayer {
                 psk.tryEncode();
                 batchedPackets.add(psk);
             } else {
-                if (p.protocol > 748) {
+                if (clientType > 3) {
                     int instrument = note.getInstrument(limit);
                     switch (instrument) {
                         case 5: instrument = 6; break;

@@ -1,8 +1,8 @@
-# Whether to enable global music playback
+# 是否启用全局音乐播放
 playEverywhere: true
 
-# Whether to allow non-OP players to control music boxes
+# 是否允许非OP玩家控制音乐盒
 allowNonOpControl: false
 
-# Whether to enable single track loop mode
+# 是否启用单曲循环
 singleCycle: false
