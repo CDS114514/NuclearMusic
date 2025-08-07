@@ -13,7 +13,7 @@ Noteblock music for Nukkit servers
 
 ## Supported Nukkit Branches
 - [x] CloudBurstMC Nukkit
-- [x] Nukkit-PM1E (Supports music playback, but console errors may occur, and playback speed (tempo) may be affected)
+- [x] Nukkit-PM1E (Supports music playback, but console errors may occur, and playback speed may be affected)
 - [ ] PowerNukkitX
 - [x] Nukkit-MOT
 - [x] Netease Nukkit
@@ -30,4 +30,5 @@ To use custom instruments, use Note Block Studio to set the instrument name to t
 - [PetteriM1 NuclearMusic](https://github.com/PetteriM1/NuclearMusic)
 
 ## Additional Notes
+
 **This plugin contains code partially written by AI**
