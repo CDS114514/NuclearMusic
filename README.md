@@ -2,14 +2,21 @@
 Noteblock music for Nukkit servers
 
 ## Features
-- [x] Read NBS files from any version
-- [x] Full pitch range support
-- [x] Custom instruments
-- [x] Global playback
-- [x] Play music through note blocks
-- [x] Loop playback
-- [x] Sequential playback
-- [x] Allow control by players with different permission levels
+- Supports NBS files of any version (NBS file format versions)
+- Full pitch range support
+- Custom instruments
+- Global playback
+- Play music through note blocks
+- Loop playback
+- Sequential playback
+- Allow control by players with different permission levels
+
+## Supported Nukkit Branches
+- [x] CloudBurstMC Nukkit
+- [x] Nukkit-PM1E (Supports music playback, but console errors may occur, and playback speed may be affected)
+- [ ] PowerNukkitX
+- [x] Nukkit-MOT
+- [x] Netease Nukkit
 
 ## Usage
 **Place your NBS music files in the `plugins/NuclearMusic/tracks` folder.  
