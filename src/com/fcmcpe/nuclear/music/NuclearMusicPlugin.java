@@ -1,9 +1,11 @@
 package com.fcmcpe.nuclear.music;
 
+import cn.nukkit.Player;
 import cn.nukkit.block.Block;
 import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
 import cn.nukkit.event.block.BlockBreakEvent;
+import cn.nukkit.event.entity.EntityLevelChangeEvent;
 import cn.nukkit.event.player.PlayerInteractEvent;
 import cn.nukkit.event.player.PlayerJoinEvent;
 import cn.nukkit.event.player.PlayerQuitEvent;
@@ -31,6 +33,7 @@ public class NuclearMusicPlugin extends PluginBase {
     public static boolean playEverywhere;
     public static boolean allowNonOpControl;
     public static boolean singleCycle;
+    public static List<String> enabledWorlds;
     private boolean isRadioWaiting = false;
     private final Map<NodeIntegerPosition, Boolean> noteBlockWaiting = new HashMap<>();
     private final Map<NodeIntegerPosition, Long> noteBlockLastProcessTime = new HashMap<>();
@@ -48,6 +51,24 @@ public class NuclearMusicPlugin extends PluginBase {
         return result;
     }
 
+    private boolean isWorldEnabled(String worldName) {
+        if (enabledWorlds.isEmpty()) return true;
+        return enabledWorlds.contains(worldName);
+    }
+
+    private void addPlayerToRadio(Player player) {
+        if (radioPlayer == null) return;
+        if (isWorldEnabled(player.getLevel().getName())) {
+            radioPlayer.addPlayer(player);
+        }
+    }
+
+    private void removePlayerFromRadio(Player player) {
+        if (radioPlayer != null) {
+            radioPlayer.removePlayer(player);
+        }
+    }
+
     @Override
     public void onEnable() {
         instance = this;
@@ -55,6 +76,7 @@ public class NuclearMusicPlugin extends PluginBase {
         playEverywhere = getConfig().getBoolean("playEverywhere", true);
         allowNonOpControl = getConfig().getBoolean("allowNonOpControl", false);
         singleCycle = getConfig().getBoolean("singleCycle", false);
+        enabledWorlds = getConfig().getStringList("enabledWorlds");
         loadAllSongs();
         
         if (playEverywhere) {
@@ -177,7 +199,7 @@ public class NuclearMusicPlugin extends PluginBase {
         radioPlayer = new RadioStereoSongPlayer(song);
         radioPlayer.setAutoCycle(singleCycle);
         radioPlayer.setAutoDestroy(false);
-        getServer().getOnlinePlayers().forEach((s, p) -> radioPlayer.addPlayer(p));
+        getServer().getOnlinePlayers().forEach((s, p) -> addPlayerToRadio(p));
         radioPlayer.setPlaying(true);
         radioLastProcessTime = System.currentTimeMillis();
     }
@@ -247,7 +269,7 @@ public class NuclearMusicPlugin extends PluginBase {
                         radioPlayer = new RadioStereoSongPlayer(next);
                         radioPlayer.setAutoCycle(singleCycle);
                         radioPlayer.setAutoDestroy(false);
-                        getServer().getOnlinePlayers().forEach((s, p) -> radioPlayer.addPlayer(p));
+                        getServer().getOnlinePlayers().forEach((s, p) -> addPlayerToRadio(p));
                         radioPlayer.setPlaying(true);
                         radioLastProcessTime = System.currentTimeMillis();
                         event.getPlayer().sendActionBar("§aNow playing: §7" + next.getTitle());
@@ -322,7 +344,7 @@ public class NuclearMusicPlugin extends PluginBase {
         public void onJoin(PlayerJoinEvent event) {
             if (playEverywhere) {
                 if (radioPlayer != null) {
-                    radioPlayer.addPlayer(event.getPlayer());
+                    addPlayerToRadio(event.getPlayer());
                 }
             } else {
                 songPlayers.values().forEach(sp -> sp.addPlayer(event.getPlayer()));
@@ -332,6 +354,21 @@ public class NuclearMusicPlugin extends PluginBase {
         @EventHandler
         public void onQuit(PlayerQuitEvent event) {
             NoteBlockAPI.getInstance().stopPlaying(event.getPlayer());
+        }
+
+        @EventHandler
+        public void onWorldChange(EntityLevelChangeEvent event) {
+            if (!playEverywhere || radioPlayer == null) return;
+            if (!(event.getEntity() instanceof Player)) return;
+            
+            Player player = (Player) event.getEntity();
+            Level targetLevel = event.getTarget();
+            
+            removePlayerFromRadio(player);
+
+            if (isWorldEnabled(targetLevel.getName())) {
+                radioPlayer.addPlayer(player);
+            }
         }
 
         @EventHandler
@@ -362,7 +399,7 @@ public class NuclearMusicPlugin extends PluginBase {
     }
 
     class DynamicTicker extends Thread {
-        private static final long MIN_SLEEP = 5;
+        private static final long MIN_SLEEP = 1;
 
         DynamicTicker() {
             setName("NuclearMusic-DynamicTicker");
@@ -403,8 +440,11 @@ public class NuclearMusicPlugin extends PluginBase {
                                     radioPlayer = new RadioStereoSongPlayer(nextSong);
                                     radioPlayer.setAutoCycle(singleCycle);
                                     radioPlayer.setAutoDestroy(false);
-                                    getServer().getOnlinePlayers().forEach((uuid, player) -> radioPlayer.addPlayer(player));
-                                    radioPlayer.setPlaying(true);
+                                    getServer().getScheduler().scheduleTask(NuclearMusicPlugin.this, () -> 
+                                        getServer().getOnlinePlayers().forEach((uuid, player) -> 
+                                            addPlayerToRadio(player)
+                                        )
+                                    );
                                 }
                                 radioLastProcessTime = System.currentTimeMillis();
                                 isRadioWaiting = false;

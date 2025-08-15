@@ -1,8 +1,14 @@
-# 是否启用全局音乐播放
+# Enable global music playback
 playEverywhere: true
 
-# 是否允许非OP玩家控制音乐盒
+# Allow non-OP players to control music boxes
 allowNonOpControl: false
 
-# 是否启用单曲循环
+# Enable single-cycle playback
 singleCycle: false
+
+# List of worlds where playback is allowed (plays globally if list is empty)
+enabledWorlds:
+#  - world
+#  - nether
+#  - the_end

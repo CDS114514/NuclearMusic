@@ -10,6 +10,7 @@ Noteblock music for Nukkit servers
 - Loop playback
 - Sequential playback
 - Allow control by players with different permission levels
+- Multi-world isolated playback
 
 ## Supported Nukkit Branches
 - [x] CloudBurstMC Nukkit
