@@ -43,7 +43,7 @@ public class RadioStereoSongPlayer extends SongPlayer {
         List<DataPacket> batchedPackets = new ArrayList<>();
         //byte playerVolume = NoteBlockAPI.getInstance().getPlayerVolume(p);
         int clientType = ClientTypeDetector.getClientType(p);
-        boolean limit = clientType < 2;
+        boolean limit = clientType < 3;
 
         for (Layer l : song.getLayerHashMap().values()) {
             Note note = l.getNote(tick);
@@ -74,6 +74,16 @@ public class RadioStereoSongPlayer extends SongPlayer {
                 psk.name = song.getCustomInstruments()[note.getInstrument(false) - song.getFirstCustomInstrumentIndex()].getName();
                 psk.x = (int) ((float) p.x + (float) add.getX());
                 psk.y = (int) ((float) p.y + (float) this.addY + p.getEyeHeight());
+                psk.z = (int) ((float) p.z + (float) add.getY());
+                psk.pitch = note.getNoteSoundPitch();
+                psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
+                psk.tryEncode();
+                batchedPackets.add(psk);
+            } else if (clientType <= 2) {
+                PlaySoundPacket psk = new PlaySoundPacket();
+                psk.name = note.getSoundEnum(limit).getSound();
+                psk.x = (int) ((float) p.x + (float) add.getX());
+                psk.y = (int) ((float) p.y + (float) this.addY);
                 psk.z = (int) ((float) p.z + (float) add.getY());
                 psk.pitch = note.getNoteSoundPitch();
                 psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
@@ -129,7 +139,6 @@ public class RadioStereoSongPlayer extends SongPlayer {
                     pk.tryEncode();
                     batchedPackets.add(pk);
                 } else {
-                    // 客户端类型小于等于3
                     LevelSoundEventPacketV2 pk = new LevelSoundEventPacketV2();
                     pk.x = (float) p.x + (float) add.getX();
                     pk.y = (float) p.y - (float) subtractY + (float) this.addY;
@@ -141,7 +150,6 @@ public class RadioStereoSongPlayer extends SongPlayer {
                     batchedPackets.add(pk);
                 }
             }
-
         }
 
         for (DataPacket pk: batchedPackets) {

@@ -36,7 +36,7 @@ public class Note {
     }
 
     public byte getInstrument(boolean limit) {
-        if (limit && instrument > 4) return 0;
+        if (limit && instrument > 4 && instrument != 15) return 0;
         return instrument;
     }
 

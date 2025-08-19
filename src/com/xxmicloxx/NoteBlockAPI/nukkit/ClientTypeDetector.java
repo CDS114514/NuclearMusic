@@ -7,7 +7,7 @@ import java.lang.reflect.Method;
 
 public class ClientTypeDetector {
     // 定义关键版本字符串
-    private static final String VERSION_1_8_0_11 = "1.8.0.11";
+    private static final String VERSION_1_12_0 = "1.12.0";
     private static final String VERSION_1_13_0 = "1.13.0";
     private static final String VERSION_1_21_50 = "1.21.50";
     private static final String VERSION_1_21_70 = "1.21.70";
@@ -15,8 +15,8 @@ public class ClientTypeDetector {
     /**
      * 获取客户端类型（1-5）
      * 类型划分：
-     * 1: 低于1.8.0.11（协议<312）
-     * 2: 1.8.0.11(含) 到 1.13.0(不含)（312<=协议<388）
+     * 1: 低于1.12.0（协议<361）
+     * 2: 1.12.0(含) 到 1.13.0(不含)（361<=协议<388）
      * 3: 1.13.0(含) 到 1.21.50(不含)（388<=协议<766）
      * 4: 1.21.50(含) 到 1.21.70(不含)（766<=协议<786）
      * 5: 1.21.70(含)及以上（协议>=786）
@@ -59,7 +59,7 @@ public class ClientTypeDetector {
      * 从GameVersion字符串解析客户端类型
      */
     private static int getTypeFromGameVersion(String gameVersion) {
-        if (compareVersions(gameVersion, VERSION_1_8_0_11) < 0) {
+        if (compareVersions(gameVersion, VERSION_1_12_0) < 0) {
             return 1;
         } else if (compareVersions(gameVersion, VERSION_1_13_0) < 0) {
             return 2;
@@ -76,7 +76,7 @@ public class ClientTypeDetector {
      * 从协议号解析客户端类型
      */
     private static int getTypeFromProtocol(int protocol) {
-        if (protocol < 312) {
+        if (protocol < 361) {
             return 1;
         } else if (protocol < 388) {
             return 2;

@@ -29,15 +29,26 @@ public class RadioSongPlayer extends SongPlayer {
             }
 
             int clientType = ClientTypeDetector.getClientType(p);
-            boolean limit = clientType < 2;
+            boolean limit = clientType < 3;
 
             int pitch = note.getKey() - 33;
+            
             if (note.getInstrument(false) >= song.getFirstCustomInstrumentIndex()) {
                 PlaySoundPacket psk = new PlaySoundPacket();
                 psk.name = song.getCustomInstruments()[note.getInstrument(false) - song.getFirstCustomInstrumentIndex()].getName();
                 psk.x = (int) ((float) p.x);
                 psk.y = (int) ((float) p.y + p.getEyeHeight());
                 psk.z = (int) ((float) p.z);
+                psk.pitch = note.getNoteSoundPitch();
+                psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
+                psk.tryEncode();
+                batchedPackets.add(psk);
+            } else if (clientType <= 2) {
+                PlaySoundPacket psk = new PlaySoundPacket();
+                psk.name = note.getSoundEnum(limit).getSound();
+                psk.x = (int) p.x;
+                psk.y = (int) p.y;
+                psk.z = (int) p.z;
                 psk.pitch = note.getNoteSoundPitch();
                 psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
                 psk.tryEncode();
@@ -92,7 +103,6 @@ public class RadioSongPlayer extends SongPlayer {
                     pk.tryEncode();
                     batchedPackets.add(pk);
                 } else {
-                    // 客户端类型小于等于3
                     LevelSoundEventPacketV2 pk = new LevelSoundEventPacketV2();
                     pk.x = (float) p.x;
                     pk.y = (float) p.y;
@@ -102,7 +112,7 @@ public class RadioSongPlayer extends SongPlayer {
                     pk.entityIdentifier = ":";
                     pk.tryEncode();
                     batchedPackets.add(pk);
-                }
+                } 
             }
 
         }
