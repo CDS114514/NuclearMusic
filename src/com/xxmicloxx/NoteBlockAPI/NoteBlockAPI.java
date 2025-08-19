@@ -4,7 +4,6 @@ import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.plugin.PluginBase;
 import com.xxmicloxx.NoteBlockAPI.player.SongPlayer;
-import com.xxmicloxx.NoteBlockAPI.runnable.TickerRunnable;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +28,9 @@ public class NoteBlockAPI extends PluginBase {
 
     public void onEnable() {
         getLogger().info("! NoteBlockAPI !");
-        Server.getInstance().getScheduler().scheduleDelayedTask(this, () -> new Thread(new TickerRunnable(), "NoteBlock Ticker").start(), 100);
+        // 注释掉原有调度线程的启动
+        // Server.getInstance().getScheduler().scheduleDelayedTask(this, () -> 
+        //     new Thread(new TickerRunnable(), "NoteBlock Ticker").start(), 100);
     }
 
     public void onDisable() {

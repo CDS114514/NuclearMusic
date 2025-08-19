@@ -17,6 +17,7 @@ import cn.nukkit.utils.Config;
 import com.xxmicloxx.NoteBlockAPI.NoteBlockAPI;
 import com.xxmicloxx.NoteBlockAPI.NBS.NBSDecoder;
 import com.xxmicloxx.NoteBlockAPI.Song;
+import com.xxmicloxx.NoteBlockAPI.event.SongEndEvent;
 import com.xxmicloxx.NoteBlockAPI.player.NoteBlockSongPlayer;
 import com.xxmicloxx.NoteBlockAPI.player.RadioStereoSongPlayer;
 import com.xxmicloxx.NoteBlockAPI.player.SongPlayer;
@@ -34,10 +35,9 @@ public class NuclearMusicPlugin extends PluginBase {
     public static boolean allowNonOpControl;
     public static boolean singleCycle;
     public static List<String> enabledWorlds;
-    private boolean isRadioWaiting = false;
-    private final Map<NodeIntegerPosition, Boolean> noteBlockWaiting = new HashMap<>();
-    private final Map<NodeIntegerPosition, Long> noteBlockLastProcessTime = new HashMap<>();
-    private long radioLastProcessTime = 0;
+    private DynamicTicker ticker;
+    private static final int INITIAL_DELAY_TICKS = 1;
+    private static final int INITIAL_DELAY_TICKS_AUTO = 20; // 1秒延迟
 
     static List<File> getAllNBSFiles(File path) {
         List<File> result = new ArrayList<>();
@@ -95,7 +95,6 @@ public class NuclearMusicPlugin extends PluginBase {
                             if (block.getId() == Item.NOTEBLOCK) {
                                 controlBlockPosition = new NodeIntegerPosition(block);
                                 startRadioPlayer();
-                                radioLastProcessTime = System.currentTimeMillis();
                             }
                         } catch (NumberFormatException ignore) {}
                     }
@@ -138,16 +137,26 @@ public class NuclearMusicPlugin extends PluginBase {
                 songPlayer.setPlaying(true);
                 NodeIntegerPosition node = new NodeIntegerPosition(block);
                 songPlayers.put(node, songPlayer);
-                noteBlockLastProcessTime.put(node, System.currentTimeMillis());
             }
         }
 
         getServer().getPluginManager().registerEvents(new NuclearMusicListener(), this);
-        new DynamicTicker().start();
+        
+        // 启动动态调度线程
+        ticker = new DynamicTicker();
+        ticker.start();
     }
 
     @Override
     public void onDisable() {
+        // 安全关闭调度线程
+        if (ticker != null) {
+            ticker.shutdown();
+            try {
+                ticker.join(1000);
+            } catch (InterruptedException ignored) {}
+        }
+        
         if (playEverywhere) {
             Config controlBlocks = new Config(getDataFolder() + "/controlblock.yml", Config.YAML);
             if (controlBlockPosition != null) {
@@ -158,7 +167,6 @@ public class NuclearMusicPlugin extends PluginBase {
             controlBlocks.save();
             
             if (radioPlayer != null) {
-                radioPlayer.setPlaying(false);
                 radioPlayer.destroy();
             }
         } else {
@@ -168,10 +176,7 @@ public class NuclearMusicPlugin extends PluginBase {
             noteblocks.set("positions", positions);
             noteblocks.save();
             
-            songPlayers.values().forEach(sp -> {
-                sp.setPlaying(false);
-                sp.destroy();
-            });
+            songPlayers.values().forEach(SongPlayer::destroy);
         }
     }
 
@@ -180,7 +185,10 @@ public class NuclearMusicPlugin extends PluginBase {
         List<File> files = getAllNBSFiles(new File(getDataFolder(), "tracks"));
         files.forEach(file -> {
             Song song = NBSDecoder.parse(file);
-            if (song == null) return;
+            if (song == null) {
+                getLogger().warning("Failed to load song: " + file.getName());
+                return;
+            }
             songs.add(song);
         });
         Collections.shuffle(songs);
@@ -188,9 +196,10 @@ public class NuclearMusicPlugin extends PluginBase {
     }
 
     public Song nextSong(Song now) {
+        if (songs.isEmpty()) return null;
         if (!songs.contains(now)) return songs.getFirst();
-        if (songs.indexOf(now) >= songs.size() - 1) return songs.getFirst();
-        return songs.get(songs.indexOf(now) + 1);
+        int nextIndex = (songs.indexOf(now) + 1) % songs.size();
+        return songs.get(nextIndex);
     }
     
     private void startRadioPlayer() {
@@ -199,9 +208,12 @@ public class NuclearMusicPlugin extends PluginBase {
         radioPlayer = new RadioStereoSongPlayer(song);
         radioPlayer.setAutoCycle(singleCycle);
         radioPlayer.setAutoDestroy(false);
+        
+        // 从全局队列移除，避免内存泄漏
+        NoteBlockAPI.getInstance().playing.remove(radioPlayer);
+        
         getServer().getOnlinePlayers().forEach((s, p) -> addPlayerToRadio(p));
         radioPlayer.setPlaying(true);
-        radioLastProcessTime = System.currentTimeMillis();
     }
 
     class NodeIntegerPosition {
@@ -264,14 +276,12 @@ public class NuclearMusicPlugin extends PluginBase {
                         }
                         
                         Song now = radioPlayer.getSong();
-                        radioPlayer.setPlaying(false);
                         Song next = nextSong(now);
-                        radioPlayer = new RadioStereoSongPlayer(next);
-                        radioPlayer.setAutoCycle(singleCycle);
-                        radioPlayer.setAutoDestroy(false);
-                        getServer().getOnlinePlayers().forEach((s, p) -> addPlayerToRadio(p));
-                        radioPlayer.setPlaying(true);
-                        radioLastProcessTime = System.currentTimeMillis();
+                        if (next == null) {
+                            event.getPlayer().sendActionBar("§cError! Failed to get next song!");
+                            return;
+                        }
+                        radioPlayer.resetSong(next, INITIAL_DELAY_TICKS); // 添加1tick延迟
                         event.getPlayer().sendActionBar("§aNow playing: §7" + next.getTitle());
                         event.setCancelled(true);
                     } else if (controlBlockPosition == null) {
@@ -283,7 +293,6 @@ public class NuclearMusicPlugin extends PluginBase {
                         
                         controlBlockPosition = node;
                         if (radioPlayer != null) {
-                            radioPlayer.setPlaying(false);
                             radioPlayer.destroy();
                         }
                         startRadioPlayer();
@@ -294,25 +303,22 @@ public class NuclearMusicPlugin extends PluginBase {
                     if (isMusicBlock) {
                         SongPlayer sp = songPlayers.get(node);
                         Song now = sp.getSong();
-                        sp.setPlaying(false);
-                        songPlayers.remove(node);
-                        noteBlockLastProcessTime.remove(node);
-                        
                         Song next = nextSong(now);
-                        NoteBlockSongPlayer songPlayer = new NoteBlockSongPlayer(next);
-                        songPlayer.setNoteBlock(block);
-                        songPlayer.setAutoCycle(singleCycle);
-                        songPlayer.setAutoDestroy(false);
-                        getServer().getOnlinePlayers().forEach((s, p) -> songPlayer.addPlayer(p));
-                        songPlayer.setPlaying(true);
-                        songPlayers.put(node, songPlayer);
-                        noteBlockLastProcessTime.put(node, System.currentTimeMillis());
+                        if (next == null) {
+                            event.getPlayer().sendActionBar("§cError! Failed to get next song!");
+                            return;
+                        }
+                        sp.resetSong(next, INITIAL_DELAY_TICKS); // 添加1tick延迟
                         event.getPlayer().sendActionBar("§aNow playing: §7" + next.getTitle());
                         event.setCancelled(true);
                     } else {
                         try {
                             Song song = songs.getFirst();
                             NoteBlockSongPlayer songPlayer = new NoteBlockSongPlayer(song);
+                            
+                            // 从全局队列移除，避免内存泄漏
+                            NoteBlockAPI.getInstance().playing.remove(songPlayer);
+                            
                             songPlayer.setNoteBlock(block);
                             songPlayer.setAutoCycle(singleCycle);
                             songPlayer.setAutoDestroy(false);
@@ -320,7 +326,6 @@ public class NuclearMusicPlugin extends PluginBase {
                             songPlayer.setPlaying(true);
                             NodeIntegerPosition nodePos = new NodeIntegerPosition(block);
                             songPlayers.put(nodePos, songPlayer);
-                            noteBlockLastProcessTime.put(nodePos, System.currentTimeMillis());
                             event.getPlayer().sendActionBar("§aNow playing: §7" + song.getTitle());
                             event.setCancelled(true);
                         } catch (NoSuchElementException ignore) {
@@ -379,7 +384,6 @@ public class NuclearMusicPlugin extends PluginBase {
                 if (playEverywhere) {
                     if (node.equals(controlBlockPosition)) {
                         if (radioPlayer != null) {
-                            radioPlayer.setPlaying(false);
                             radioPlayer.destroy();
                             radioPlayer = null;
                         }
@@ -388,10 +392,39 @@ public class NuclearMusicPlugin extends PluginBase {
                 } else {
                     SongPlayer sp = songPlayers.get(node);
                     if (sp != null) {
-                        sp.setPlaying(false);
                         sp.destroy();
                         songPlayers.remove(node);
-                        noteBlockLastProcessTime.remove(node);
+                    }
+                }
+            }
+        }
+
+        @EventHandler
+        public void onSongEnd(SongEndEvent event) {
+            SongPlayer songPlayer = event.getSongPlayer();
+            
+            // 处理全局收音机
+            if (playEverywhere && songPlayer == radioPlayer) {
+                if (!singleCycle) {
+                    Song next = nextSong(songPlayer.getSong());
+                    if (next != null) {
+                        radioPlayer.resetSong(next, INITIAL_DELAY_TICKS_AUTO); // 添加1秒延迟
+                    }
+                }
+                return;
+            }
+            
+            // 处理音符块播放器
+            if (!playEverywhere) {
+                for (Map.Entry<NodeIntegerPosition, SongPlayer> entry : songPlayers.entrySet()) {
+                    if (entry.getValue() == songPlayer) {
+                        if (!singleCycle) {
+                            Song next = nextSong(songPlayer.getSong());
+                            if (next != null) {
+                                songPlayer.resetSong(next, INITIAL_DELAY_TICKS_AUTO); // 添加1秒延迟
+                            }
+                        }
+                        break;
                     }
                 }
             }
@@ -400,117 +433,39 @@ public class NuclearMusicPlugin extends PluginBase {
 
     class DynamicTicker extends Thread {
         private static final long MIN_SLEEP = 1;
+        private volatile boolean running = true;
 
         DynamicTicker() {
             setName("NuclearMusic-DynamicTicker");
+            setDaemon(true);
         }
 
         @Override
         public void run() {
-            while (isEnabled()) {
+            while (running && instance.isEnabled()) {
                 try {
-                    long currentTime = System.currentTimeMillis();
-                    
-                    if (playEverywhere && radioPlayer != null && radioPlayer.isPlaying() && !isRadioWaiting) {
-                        Song currentSong = radioPlayer.getSong();
-                        double tickInterval = 1000.0 / currentSong.getSpeed();
-                        long elapsed = currentTime - radioLastProcessTime;
-
-                        if (elapsed >= tickInterval) {
-                            radioPlayer.tryPlay();
-                            radioLastProcessTime = currentTime;
-                        }
-
-                        if (radioPlayer.getTick() >= currentSong.getLength()) {
-                            isRadioWaiting = true;
-                            new Thread(() -> {
-                                try {
-                                    Thread.sleep(1000);
-                                } catch (InterruptedException e) {
-                                    Thread.currentThread().interrupt();
-                                }
-                                if (!isEnabled()) return;
-
-                                if (singleCycle) {
-                                    radioPlayer.setTick((short) 0);
-                                } else {
-                                    Song nextSong = nextSong(currentSong);
-                                    radioPlayer.setPlaying(false);
-                                    radioPlayer.destroy();
-                                    radioPlayer = new RadioStereoSongPlayer(nextSong);
-                                    radioPlayer.setAutoCycle(singleCycle);
-                                    radioPlayer.setAutoDestroy(false);
-                                    getServer().getScheduler().scheduleTask(NuclearMusicPlugin.this, () -> 
-                                        getServer().getOnlinePlayers().forEach((uuid, player) -> 
-                                            addPlayerToRadio(player)
-                                        )
-                                    );
-                                }
-                                radioLastProcessTime = System.currentTimeMillis();
-                                isRadioWaiting = false;
-                            }).start();
-                        }
+                    // 调用内置播放逻辑处理（自动管理tick和结束检测）
+                    if (playEverywhere && radioPlayer != null) {
+                        radioPlayer.tryPlay();
                     }
 
                     if (!playEverywhere) {
-                        Iterator<Map.Entry<NodeIntegerPosition, SongPlayer>> iterator = songPlayers.entrySet().iterator();
-                        while (iterator.hasNext()) {
-                            Map.Entry<NodeIntegerPosition, SongPlayer> entry = iterator.next();
-                            NodeIntegerPosition pos = entry.getKey();
-                            SongPlayer player = entry.getValue();
-
-                            boolean isWaiting = noteBlockWaiting.getOrDefault(pos, false);
-                            if (player.isPlaying() && player instanceof NoteBlockSongPlayer && !isWaiting) {
-                                Song currentSong = player.getSong();
-                                double tickInterval = 1000.0 / currentSong.getSpeed();
-                                long lastTime = noteBlockLastProcessTime.getOrDefault(pos, currentTime);
-                                long elapsed = currentTime - lastTime;
-
-                                if (elapsed >= tickInterval) {
-                                    player.tryPlay();
-                                    noteBlockLastProcessTime.put(pos, currentTime);
-                                }
-
-                                if (player.getTick() >= currentSong.getLength()) {
-                                    noteBlockWaiting.put(pos, true);
-                                    new Thread(() -> {
-                                        try {
-                                            Thread.sleep(1000);
-                                        } catch (InterruptedException e) {
-                                            Thread.currentThread().interrupt();
-                                        }
-                                        if (!isEnabled()) return;
-
-                                        if (singleCycle) {
-                                            player.setTick((short) 0);
-                                        } else {
-                                            Song nextSong = nextSong(currentSong);
-                                            player.setPlaying(false);
-                                            player.destroy();
-
-                                            NoteBlockSongPlayer newPlayer = new NoteBlockSongPlayer(nextSong);
-                                            newPlayer.setNoteBlock(((NoteBlockSongPlayer) player).getNoteBlock());
-                                            newPlayer.setAutoCycle(singleCycle);
-                                            newPlayer.setAutoDestroy(false);
-                                            getServer().getOnlinePlayers().forEach((uuid, p) -> newPlayer.addPlayer(p));
-                                            newPlayer.setPlaying(true);
-                                            entry.setValue(newPlayer);
-                                        }
-                                        noteBlockLastProcessTime.put(pos, System.currentTimeMillis());
-                                        noteBlockWaiting.put(pos, false);
-                                    }).start();
-                                }
-                            }
-                        }
+                        songPlayers.values().forEach(SongPlayer::tryPlay);
                     }
 
                     Thread.sleep(MIN_SLEEP);
-
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     break;
-                } catch (Exception ignore) {}
+                } catch (Exception e) {
+                    getLogger().error("Error in DynamicTicker: " + e.getMessage(), e);
+                }
             }
+        }
+
+        public void shutdown() {
+            running = false;
+            interrupt();
         }
     }
 }

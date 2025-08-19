@@ -7,6 +7,7 @@ import com.xxmicloxx.NoteBlockAPI.note.FadeType;
 import com.xxmicloxx.NoteBlockAPI.note.Interpolator;
 import com.xxmicloxx.NoteBlockAPI.NoteBlockAPI;
 import com.xxmicloxx.NoteBlockAPI.Song;
+import com.fcmcpe.nuclear.music.NuclearMusicPlugin;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -196,10 +197,14 @@ public abstract class SongPlayer {
                 return;
             }
             if (autoCycle) playing = true;
-            Server.getInstance().getScheduler().scheduleTask(NoteBlockAPI.getInstance(), () -> {
-                SongEndEvent event = new SongEndEvent(this);
-                Server.getInstance().getPluginManager().callEvent(event);
-            });
+            
+            // 使用主插件实例调度事件
+            NuclearMusicPlugin.instance.getServer().getScheduler()
+                .scheduleTask(NuclearMusicPlugin.instance, () -> {
+                    SongEndEvent event = new SongEndEvent(this);
+                    NuclearMusicPlugin.instance.getServer()
+                        .getPluginManager().callEvent(event);
+                });
             return;
         }
         for (Player p : playerList) {
