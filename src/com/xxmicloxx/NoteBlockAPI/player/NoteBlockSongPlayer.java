@@ -175,7 +175,8 @@ public class NoteBlockSongPlayer extends SongPlayer {
                         psk.tryEncode();
                         batchedPackets.add(psk);
                     } else {
-                        if (clientType > 3) {
+                        if (clientType > 4) {
+                            // 客户端类型大于4（1.21.70及以上）
                             int instrument = note.getInstrument(limit);
                             switch (instrument) {
                                 case 5: instrument = 6; break;
@@ -193,7 +194,27 @@ public class NoteBlockSongPlayer extends SongPlayer {
                             pk1.entityIdentifier = ":";
                             pk1.tryEncode();
                             batchedPackets.add(pk1);
+                        } else if (clientType > 3) {
+                            // 客户端类型等于4（1.21.50到1.21.70）
+                            int instrument = note.getInstrument(limit);
+                            switch (instrument) {
+                                case 5: instrument = 6; break;
+                                case 6: instrument = 5; break;
+                                case 7: instrument = 8; break;
+                                case 8: instrument = 7; break;
+                            }
+                            
+                            LevelSoundEventPacketV2 pk1 = new LevelSoundEventPacketV2();
+                            pk1.x = (float) noteBlock.x + 0.5f;
+                            pk1.y = (float) noteBlock.y - subtractY + 0.5f;
+                            pk1.z = (float) noteBlock.z + 0.5f;
+                            pk1.sound = LevelSoundEventPacketV2.SOUND_NOTE;
+                            pk1.extraData = instrument * 256 + pitch;
+                            pk1.entityIdentifier = ":";
+                            pk1.tryEncode();
+                            batchedPackets.add(pk1);
                         } else {
+                            // 客户端类型小于等于3
                             LevelSoundEventPacketV2 pk1 = new LevelSoundEventPacketV2();
                             pk1.x = (float) noteBlock.x + 0.5f;
                             pk1.y = (float) noteBlock.y - subtractY + 0.5f;

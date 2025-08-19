@@ -90,7 +90,8 @@ public class RadioStereoSongPlayer extends SongPlayer {
                 psk.tryEncode();
                 batchedPackets.add(psk);
             } else {
-                if (clientType > 3) {
+                if (clientType > 4) {
+                    // 客户端类型大于4（1.21.70及以上）
                     int instrument = note.getInstrument(limit);
                     switch (instrument) {
                         case 5: instrument = 6; break;
@@ -108,7 +109,27 @@ public class RadioStereoSongPlayer extends SongPlayer {
                     pk.entityIdentifier = ":";
                     pk.tryEncode();
                     batchedPackets.add(pk);
+                } else if (clientType > 3) {
+                    // 客户端类型等于4（1.21.50到1.21.70）
+                    int instrument = note.getInstrument(limit);
+                    switch (instrument) {
+                        case 5: instrument = 6; break;
+                        case 6: instrument = 5; break;
+                        case 7: instrument = 8; break;
+                        case 8: instrument = 7; break;
+                    }
+                    
+                    LevelSoundEventPacketV2 pk = new LevelSoundEventPacketV2();
+                    pk.x = (float) p.x + (float) add.getX();
+                    pk.y = (float) p.y - (float) subtractY + (float) this.addY;
+                    pk.z = (float) p.z + (float) add.getY();
+                    pk.sound = LevelSoundEventPacketV2.SOUND_NOTE;
+                    pk.extraData = instrument * 256 + pitch;
+                    pk.entityIdentifier = ":";
+                    pk.tryEncode();
+                    batchedPackets.add(pk);
                 } else {
+                    // 客户端类型小于等于3
                     LevelSoundEventPacketV2 pk = new LevelSoundEventPacketV2();
                     pk.x = (float) p.x + (float) add.getX();
                     pk.y = (float) p.y - (float) subtractY + (float) this.addY;
