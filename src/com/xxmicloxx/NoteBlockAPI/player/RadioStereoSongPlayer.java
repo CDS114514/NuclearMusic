@@ -79,7 +79,7 @@ public class RadioStereoSongPlayer extends SongPlayer {
                 psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
                 psk.tryEncode();
                 batchedPackets.add(psk);
-            } else if (clientType <= 2) {
+            } else if (clientType < 2 || (clientType == 2 && note.getInstrument(limit) == 15)) {
                 PlaySoundPacket psk = new PlaySoundPacket();
                 psk.name = note.getSoundEnum(limit).getSound();
                 psk.x = (int) ((float) p.x + (float) add.getX());
