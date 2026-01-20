@@ -10,16 +10,14 @@ public class ClientTypeDetector {
     private static final String VERSION_1_12_0 = "1.12.0";
     private static final String VERSION_1_13_0 = "1.13.0";
     private static final String VERSION_1_21_50 = "1.21.50";
-    private static final String VERSION_1_21_70 = "1.21.70";
 
     /**
-     * 获取客户端类型（1-5）
+     * 获取客户端类型（1-4）
      * 类型划分：
      * 1: 低于1.12.0（协议<361）
      * 2: 1.12.0(含) 到 1.13.0(不含)（361<=协议<388）
      * 3: 1.13.0(含) 到 1.21.50(不含)（388<=协议<766）
-     * 4: 1.21.50(含) 到 1.21.70(不含)（766<=协议<786）
-     * 5: 1.21.70(含)及以上（协议>=786）
+     * 4: 1.21.70(含)及以上（协议>=786）
      */
     public static int getClientType(Player player) {
         // 优先级1：检查Nukkit-MOT的protocol字段
@@ -65,10 +63,8 @@ public class ClientTypeDetector {
             return 2;
         } else if (compareVersions(gameVersion, VERSION_1_21_50) < 0) {
             return 3;
-        } else if (compareVersions(gameVersion, VERSION_1_21_70) < 0) {
-            return 4;
         } else {
-            return 5;
+            return 4;
         }
     }
 
@@ -82,10 +78,8 @@ public class ClientTypeDetector {
             return 2;
         } else if (protocol < 766) {
             return 3;
-        } else if (protocol < 786) {
-            return 4;
         } else {
-            return 5;
+            return 4;
         }
     }
 

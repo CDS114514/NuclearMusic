@@ -5,7 +5,6 @@ import cn.nukkit.block.Block;
 import cn.nukkit.network.protocol.BlockEventPacket;
 import cn.nukkit.network.protocol.DataPacket;
 import cn.nukkit.network.protocol.LevelSoundEventPacket;
-import cn.nukkit.network.protocol.LevelSoundEventPacketV2;
 import cn.nukkit.network.protocol.PlaySoundPacket;
 import com.xxmicloxx.NoteBlockAPI.Song;
 import com.xxmicloxx.NoteBlockAPI.note.Layer;
@@ -194,9 +193,9 @@ public class StereoSongPlayer extends SongPlayer {
                         
                         setFieldValue(pk, new String[]{"eventType", "case1"}, note.getInstrument(limit));
                         setFieldValue(pk, new String[]{"eventData", "case2"}, pitch);
-                        pk.tryEncode();
 
-                        if (note.getInstrument(false) >= song.getFirstCustomInstrumentIndex()) {
+                        if (note.getInstrument(false) >= song.getFirstCustomInstrumentIndex())
+                        {
                             PlaySoundPacket psk = new PlaySoundPacket();
                             psk.name = song.getCustomInstruments()[note.getInstrument(false) - song.getFirstCustomInstrumentIndex()].getName();
                             psk.x = (int) ((float) p.x);
@@ -204,9 +203,10 @@ public class StereoSongPlayer extends SongPlayer {
                             psk.z = (int) ((float) p.z);
                             psk.pitch = note.getNoteSoundPitch();
                             psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
-                            psk.tryEncode();
                             batchedPackets.add(psk);
-                        } else if (clientType < 2 || (clientType == 2 && note.getInstrument(limit) == 15)) {
+                        }
+                        else if ((clientType >= 1 && pitch < 0) || (clientType == 2 && note.getInstrument(limit) == 15) || clientType < 2)
+                        {
                             PlaySoundPacket psk = new PlaySoundPacket();
                             psk.name = note.getSoundEnum(limit).getSound();
                             psk.x = (int) noteBlock.x;
@@ -214,68 +214,23 @@ public class StereoSongPlayer extends SongPlayer {
                             psk.z = (int) noteBlock.z;
                             psk.pitch = note.getNoteSoundPitch();
                             psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
-                            psk.tryEncode();
                             batchedPackets.add(psk);
-                        } else if (clientType >= 1 && pitch < 0) {
-                            PlaySoundPacket psk = new PlaySoundPacket();
-                            psk.name = note.getSoundEnum(limit).getSound();
-                            psk.x = (int) noteBlock.x;
-                            psk.y = (int) noteBlock.y;
-                            psk.z = (int) noteBlock.z;
-                            psk.pitch = note.getNoteSoundPitch();
-                            psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
-                            psk.tryEncode();
-                            batchedPackets.add(psk);
-                        } else {
-                            if (clientType > 4) {
-                                // 客户端类型大于4（1.21.70及以上）
-                                int instrument = note.getInstrument(limit);
-                                switch (instrument) {
-                                    case 5: instrument = 6; break;
-                                    case 6: instrument = 5; break;
-                                    case 7: instrument = 8; break;
-                                    case 8: instrument = 7; break;
-                                }
-                                
-                                LevelSoundEventPacket pk1 = new LevelSoundEventPacket();
-                                pk1.x = (float) noteBlock.x + 0.5f;
-                                pk1.y = (float) noteBlock.y + 0.5f;
-                                pk1.z = (float) noteBlock.z + 0.5f;
-                                pk1.sound = LevelSoundEventPacket.SOUND_NOTE;
-                                pk1.extraData = instrument * 256 + pitch;
-                                pk1.entityIdentifier = ":";
-                                pk1.tryEncode();
-                                batchedPackets.add(pk1);
-                            } else if (clientType > 3) {
-                                // 客户端类型等于4（1.21.50到1.21.70）
-                                int instrument = note.getInstrument(limit);
-                                switch (instrument) {
-                                    case 5: instrument = 6; break;
-                                    case 6: instrument = 5; break;
-                                    case 7: instrument = 8; break;
-                                    case 8: instrument = 7; break;
-                                }
-                                
-                                LevelSoundEventPacketV2 pk1 = new LevelSoundEventPacketV2();
-                                pk1.x = (float) noteBlock.x + 0.5f;
-                                pk1.y = (float) noteBlock.y + 0.5f;
-                                pk1.z = (float) noteBlock.z + 0.5f;
-                                pk1.sound = LevelSoundEventPacketV2.SOUND_NOTE;
-                                pk1.extraData = instrument * 256 + pitch;
-                                pk1.entityIdentifier = ":";
-                                pk1.tryEncode();
-                                batchedPackets.add(pk1);
-                            } else {
-                                LevelSoundEventPacketV2 pk1 = new LevelSoundEventPacketV2();
-                                pk1.x = (float) noteBlock.x + 0.5f;
-                                pk1.y = (float) noteBlock.y + 0.5f;
-                                pk1.z = (float) noteBlock.z + 0.5f;
-                                pk1.sound = LevelSoundEventPacketV2.SOUND_NOTE;
-                                pk1.extraData = (int) (note.getInstrument(limit) * 256) + pitch;
-                                pk1.entityIdentifier = ":";
-                                pk1.tryEncode();
-                                batchedPackets.add(pk1);
+                        }
+                        else
+                        {
+                            int instrument = note.getInstrument(limit);
+                            if (clientType > 3)
+                            {
+                                instrument = note.NewVersionInstrument(instrument);
                             }
+                            LevelSoundEventPacket pk1 = new LevelSoundEventPacket();
+                            pk1.x = (float) noteBlock.x + 0.5f;
+                            pk1.y = (float) noteBlock.y + 0.5f;
+                            pk1.z = (float) noteBlock.z + 0.5f;
+                            pk1.sound = LevelSoundEventPacket.SOUND_NOTE;
+                            pk1.extraData = instrument * 256 + pitch;
+                            pk1.entityIdentifier = ":";
+                            batchedPackets.add(pk1);
                         }
 
                         batchedPackets.add(pk);

@@ -1,19 +1,12 @@
 package com.xxmicloxx.NoteBlockAPI.player;
 
 import cn.nukkit.Player;
-import cn.nukkit.Server;
 import cn.nukkit.block.Block;
-import com.xxmicloxx.NoteBlockAPI.nukkit.SoundEnum;
 import com.xxmicloxx.NoteBlockAPI.nukkit.Mth;
 import cn.nukkit.math.Vector2;
-import cn.nukkit.network.protocol.BatchPacket;
 import cn.nukkit.network.protocol.DataPacket;
 import cn.nukkit.network.protocol.LevelSoundEventPacket;
-import cn.nukkit.network.protocol.LevelSoundEventPacketV2;
 import cn.nukkit.network.protocol.PlaySoundPacket;
-import cn.nukkit.utils.Binary;
-import cn.nukkit.utils.MainLogger;
-import cn.nukkit.utils.Zlib;
 import com.xxmicloxx.NoteBlockAPI.Song;
 import com.xxmicloxx.NoteBlockAPI.note.Layer;
 import com.xxmicloxx.NoteBlockAPI.note.Note;
@@ -69,7 +62,8 @@ public class RadioStereoSongPlayer extends SongPlayer {
 
             int pitch = note.getKey() - 33;
 
-            if (note.getInstrument(false) >= song.getFirstCustomInstrumentIndex()) {
+            if (note.getInstrument(false) >= song.getFirstCustomInstrumentIndex())
+            {
                 PlaySoundPacket psk = new PlaySoundPacket();
                 psk.name = song.getCustomInstruments()[note.getInstrument(false) - song.getFirstCustomInstrumentIndex()].getName();
                 psk.x = (int) ((float) p.x + (float) add.getX());
@@ -77,9 +71,10 @@ public class RadioStereoSongPlayer extends SongPlayer {
                 psk.z = (int) ((float) p.z + (float) add.getY());
                 psk.pitch = note.getNoteSoundPitch();
                 psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
-                psk.tryEncode();
                 batchedPackets.add(psk);
-            } else if (clientType < 2 || (clientType == 2 && note.getInstrument(limit) == 15)) {
+            }
+            else if ((clientType >= 1 && pitch < 0) || (clientType == 2 && note.getInstrument(limit) == 15) || clientType < 2)
+            {
                 PlaySoundPacket psk = new PlaySoundPacket();
                 psk.name = note.getSoundEnum(limit).getSound();
                 psk.x = (int) ((float) p.x + (float) add.getX());
@@ -87,68 +82,24 @@ public class RadioStereoSongPlayer extends SongPlayer {
                 psk.z = (int) ((float) p.z + (float) add.getY());
                 psk.pitch = note.getNoteSoundPitch();
                 psk.volume = (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
-                psk.tryEncode();
                 batchedPackets.add(psk);
-            } else if ((clientType >= 1 && pitch < 0)) {
-                PlaySoundPacket psk = new PlaySoundPacket();
-                psk.name = note.getSoundEnum(true).getSound();
-                psk.x = (int) ((float) p.x + (float) add.getX());
-                psk.y = (int) ((float) p.y + (float) this.addY);
-                psk.z = (int) ((float) p.z + (float) add.getY());
-                psk.pitch = note.getNoteSoundPitch();
-                psk.volume =  (float) l.getVolume() / 100 * ((float) this.getVolume() / 100);
-                psk.tryEncode();
-                batchedPackets.add(psk);
-            } else {
-                if (clientType > 4) {
-                    // 客户端类型大于4（1.21.70及以上）
-                    int instrument = note.getInstrument(limit);
-                    switch (instrument) {
-                        case 5: instrument = 6; break;
-                        case 6: instrument = 5; break;
-                        case 7: instrument = 8; break;
-                        case 8: instrument = 7; break;
-                    }
-                    
-                    LevelSoundEventPacket pk = new LevelSoundEventPacket();
-                    pk.x = (float) p.x + (float) add.getX();
-                    pk.y = (float) p.y - (float) subtractY + (float) this.addY;
-                    pk.z = (float) p.z + (float) add.getY();
-                    pk.sound = LevelSoundEventPacket.SOUND_NOTE;
-                    pk.extraData = instrument * 256 + pitch;
-                    pk.entityIdentifier = ":";
-                    pk.tryEncode();
-                    batchedPackets.add(pk);
-                } else if (clientType > 3) {
-                    // 客户端类型等于4（1.21.50到1.21.70）
-                    int instrument = note.getInstrument(limit);
-                    switch (instrument) {
-                        case 5: instrument = 6; break;
-                        case 6: instrument = 5; break;
-                        case 7: instrument = 8; break;
-                        case 8: instrument = 7; break;
-                    }
-                    
-                    LevelSoundEventPacketV2 pk = new LevelSoundEventPacketV2();
-                    pk.x = (float) p.x + (float) add.getX();
-                    pk.y = (float) p.y - (float) subtractY + (float) this.addY;
-                    pk.z = (float) p.z + (float) add.getY();
-                    pk.sound = LevelSoundEventPacketV2.SOUND_NOTE;
-                    pk.extraData = instrument * 256 + pitch;
-                    pk.entityIdentifier = ":";
-                    pk.tryEncode();
-                    batchedPackets.add(pk);
-                } else {
-                    LevelSoundEventPacketV2 pk = new LevelSoundEventPacketV2();
-                    pk.x = (float) p.x + (float) add.getX();
-                    pk.y = (float) p.y - (float) subtractY + (float) this.addY;
-                    pk.z = (float) p.z + (float) add.getY();
-                    pk.sound = LevelSoundEventPacketV2.SOUND_NOTE;
-                    pk.extraData = (int) (note.getInstrument(limit) * 256) + pitch;
-                    pk.entityIdentifier = ":";
-                    pk.tryEncode();
-                    batchedPackets.add(pk);
+            }
+            else
+            {
+                int instrument = note.getInstrument(limit);
+                if (clientType > 3)
+                {
+                    instrument = note.NewVersionInstrument(instrument);
                 }
+
+                LevelSoundEventPacket pk = new LevelSoundEventPacket();
+                pk.x = (float) p.x + (float) add.getX();
+                pk.y = (float) p.y - (float) subtractY + (float) this.addY;
+                pk.z = (float) p.z + (float) add.getY();
+                pk.sound = LevelSoundEventPacket.SOUND_NOTE;
+                pk.extraData = instrument * 256 + pitch;
+                pk.entityIdentifier = ":";
+                batchedPackets.add(pk);
             }
         }
 

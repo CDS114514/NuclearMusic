@@ -1,7 +1,6 @@
 package com.xxmicloxx.NoteBlockAPI.player;
 
 import cn.nukkit.Player;
-import cn.nukkit.Server;
 import com.xxmicloxx.NoteBlockAPI.event.SongEndEvent;
 import com.xxmicloxx.NoteBlockAPI.note.FadeType;
 import com.xxmicloxx.NoteBlockAPI.note.Interpolator;

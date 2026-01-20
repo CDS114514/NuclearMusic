@@ -79,6 +79,22 @@ public class Note {
         }
     }
 
+    public int NewVersionInstrument(int instrument)
+    {
+        switch (instrument) {
+            case 5:
+                return 6;
+            case 6:
+                return 5;
+            case 7:
+                return 8;
+            case 8:
+                return 7;
+            default:
+                return instrument;
+        }
+    }
+
     public void setInstrument(byte instrument) {
         this.instrument = instrument;
     }
