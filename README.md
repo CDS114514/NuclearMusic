@@ -14,10 +14,9 @@ Noteblock music for Nukkit servers
 
 ## Supported Nukkit Branches
 - [x] CloudBurstMC Nukkit
-- [x] Nukkit-PM1E (Supports music playback, but console errors may occur, and playback speed may be affected)
-- [ ] PowerNukkitX
+- [x] Nukkit-PM1E
+- [x] PowerNukkitX
 - [x] Nukkit-MOT
-- [x] Netease Nukkit
 
 ## Usage
 **Place your NBS music files in the `plugins/NuclearMusic/tracks` folder.  
@@ -31,5 +30,6 @@ To use custom instruments, use Note Block Studio to set the instrument name to t
 - [PetteriM1 NuclearMusic](https://github.com/PetteriM1/NuclearMusic)
 
 ## Additional Notes
+
 
 **This plugin contains code partially written by AI**
