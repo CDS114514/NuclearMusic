@@ -2,7 +2,7 @@
 Noteblock music for Nukkit servers
 
 ## Features
-- Supports NBS files of any version
+- Supports NBS v0-v6
 - Full pitch range support
 - Custom instruments
 - Global playback
